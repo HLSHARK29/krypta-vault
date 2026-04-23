@@ -18,11 +18,13 @@ export const Auth = {
     // 2. Guardar la llave tras el login exitoso con contraseña maestra
     async saveKey(cryptoKey) {
         try {
+            // Exportamos la llave a un formato crudo (Uint8Array)
             const exported = await crypto.subtle.exportKey("raw", cryptoKey);
-            // Uso de .apply para evitar errores de stack en la conversión binaria
-            const base64Key = btoa(String.fromCharCode.apply(null, new Uint8Array(exported)));
             
-            // Guardamos la llave en el almacenamiento local seguro
+            // Conversión optimizada a Base64
+            const base64Key = btoa(Array.from(new Uint8Array(exported), b => String.fromCharCode(b)).join(''));
+            
+            // Guardamos la llave en el almacenamiento local
             localStorage.setItem('krypta_session_key', base64Key);
             return true;
         } catch (e) {
@@ -41,13 +43,14 @@ export const Auth = {
         
         if (confirmed) {
             try {
-                // Decodificación robusta de Base64 a Uint8Array
+                // Decodificación de Base64 a Uint8Array
                 const binaryString = atob(savedBase64);
                 const bytes = new Uint8Array(binaryString.length);
                 for (let i = 0; i < binaryString.length; i++) {
                     bytes[i] = binaryString.charCodeAt(i);
                 }
 
+                // Re-importamos la llave para que CryptoEngine pueda usarla en RAM
                 return await crypto.subtle.importKey(
                     "raw",
                     bytes,
@@ -72,10 +75,10 @@ export const Auth = {
                 return false;
             }
 
+            // El "challenge" es una medida de seguridad para evitar ataques de repetición
             const challenge = new Uint8Array(32);
             window.crypto.getRandomValues(challenge);
 
-            // Ajuste de seguridad: rpId dinámico que ignora "localhost" si es necesario
             const currentHostname = window.location.hostname;
 
             const authOptions = {
@@ -83,16 +86,19 @@ export const Auth = {
                     challenge: challenge,
                     timeout: 60000,
                     userVerification: "required", 
-                    // El rpId es estricto; si usas localhost debe omitirse o ser exacto
-                    rpId: currentHostname === "localhost" ? undefined : currentHostname,
+                    // Si estamos en localhost, el rpId debe ser null para que no falle
+                    rpId: (currentHostname === "localhost" || currentHostname === "127.0.0.1") 
+                          ? undefined 
+                          : currentHostname,
                     allowCredentials: [] 
                 }
             };
 
+            // Esto abre la ventana nativa de Windows Hello / FaceID / TouchID
             await navigator.credentials.get(authOptions);
             return true;
         } catch (error) {
-            console.warn("Krypta: Autenticación biométrica cancelada o fallida.");
+            console.warn("Krypta: Autenticación biométrica cancelada o fallida.", error);
             return false;
         }
     },

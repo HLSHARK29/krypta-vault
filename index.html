@@ -94,17 +94,33 @@
             </section>
 
             <div id="modal-overlay" style="display: none;">
-                <div class="glass-card modal">
-                    <h3>Nueva Credencial</h3>
-                    <input type="text" id="new-site" placeholder="Sitio Web (ej. GitHub)" spellcheck="false">
+                <div class="glass-card modal" id="credential-modal" data-mode="create" data-edit-id="">
+                    <h3 id="modal-title">Nueva Credencial</h3>
+                    
+                    <input type="text" id="new-site" placeholder="Sitio o Nombre (ej. Netflix, NIP Banco, Maleta)" spellcheck="false">
+                    
                     <input type="text" id="new-user" placeholder="Usuario" autocomplete="off">
                     <input type="email" id="new-email" placeholder="Correo electrónico" inputmode="email">
                     <textarea id="new-notes" placeholder="Notas adicionales..."></textarea>
                     
                     <div class="password-container">
-                        <input type="password" id="new-pass" placeholder="Contraseña" autocomplete="new-password" spellcheck="false">
+                        <div class="input-action-group">
+                            <input type="password" id="new-pass" placeholder="Contraseña" autocomplete="new-password" spellcheck="false">
+                            <button id="btn-generate-pass" type="button" title="Generar Contraseña Segura">
+                                <span class="material-icons-round">vpn_key</span>
+                            </button>
+                        </div>
+
+                        <div class="strength-wrapper">
+                            <div id="password-strength-meter"></div>
+                            <div class="strength-label-container">
+                                <span id="strength-text">Nivel de seguridad</span>
+                                <span id="excellent-badge" class="material-icons-round" style="display: none;">workspace_premium</span>
+                            </div>
+                        </div>
+
                         <label class="show-pass-control">
-                            <input type="checkbox" class="check-show-pass" data-target="new-pass"> 
+                            <input type="checkbox" id="check-show-new-pass" class="check-show-pass" data-target="new-pass"> 
                             Mostrar contraseña
                         </label>
                     </div>

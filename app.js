@@ -11,6 +11,7 @@ import {
 // Estado global de la aplicación (RAM)
 let activeKey = null;
 let currentUser = null;
+let editingId = null; 
 
 // Selectores del DOM
 const ui = {
@@ -18,6 +19,8 @@ const ui = {
     regScreen: document.getElementById('register-screen'),
     vaultScreen: document.getElementById('vault-screen'),
     modalOverlay: document.getElementById('modal-overlay'),
+    modalTitle: document.getElementById('modal-title'),
+    credentialModal: document.getElementById('credential-modal'),
     
     loginUser: document.getElementById('login-username'),
     masterKeyInput: document.getElementById('master-key'),
@@ -30,6 +33,10 @@ const ui = {
     newEmail: document.getElementById('new-email'),
     newNotes: document.getElementById('new-notes'),
     newPass: document.getElementById('new-pass'),
+    passMeter: document.getElementById('password-strength-meter'),
+    strengthText: document.getElementById('strength-text'),
+    badge: document.getElementById('excellent-badge'), // Selector de la medalla
+    checkShowNewPass: document.getElementById('check-show-new-pass'),
 
     btnUnlock: document.getElementById('btn-unlock'),
     btnBiometric: document.getElementById('btn-biometric'),
@@ -38,6 +45,7 @@ const ui = {
     btnSaveNew: document.getElementById('btn-save-new'),
     btnConfirmSave: document.getElementById('btn-confirm-save'),
     btnCancelSave: document.getElementById('btn-cancel-save'),
+    btnGenerate: document.getElementById('btn-generate-pass'),
     
     passwordList: document.getElementById('password-list'),
     goToRegister: document.getElementById('go-to-register'),
@@ -46,7 +54,7 @@ const ui = {
 
 document.addEventListener('DOMContentLoaded', async () => {
     
-    // --- 1. Lógica de Checkbox para Visibilidad ---
+    // --- 1. Lógica de Visibilidad y Evaluación de Fuerza ---
     document.body.addEventListener('change', (e) => {
         if (e.target.classList.contains('check-show-pass')) {
             const targetId = e.target.getAttribute('data-target');
@@ -57,22 +65,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // --- 2. Navegación ---
+    ui.newPass.addEventListener('input', () => {
+        evaluateStrength(ui.newPass.value);
+    });
+
+    // --- 2. Generador de Contraseñas (Ajustado a nivel Excelente) ---
+    ui.btnGenerate.addEventListener('click', () => {
+        const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=";
+        let retVal = "";
+        for (let i = 0; i < 22; ++i) { // Aumentado a 22 para asegurar nivel Excelente
+            retVal += charset.charAt(Math.floor(Math.random() * charset.length));
+        }
+        ui.newPass.value = retVal;
+        ui.newPass.type = "text"; 
+        ui.checkShowNewPass.checked = true;
+        evaluateStrength(retVal);
+    });
+
+    // --- 3. Navegación ---
     ui.goToRegister.addEventListener('click', (e) => { e.preventDefault(); showScreen('register'); });
     ui.goToLogin.addEventListener('click', (e) => { e.preventDefault(); showScreen('auth'); });
 
-    // --- 3. Persistencia de Sesión Firebase ---
+    // --- 4. Persistencia de Sesión Firebase ---
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUser = { id: user.uid, email: user.email };
-            // Si el usuario vuelve y no tenemos la llave activa, intentamos biometría o pedimos Master Key
             if (!activeKey) showScreen('auth');
         } else {
             showScreen('register');
         }
     });
 
-    // --- 4. Soporte Biométrico Nativo ---
+    // --- 5. Soporte Biométrico ---
     const hasBiometrics = await Auth.checkSupport();
     if (!hasBiometrics) {
         ui.btnBiometric.style.display = 'none';
@@ -84,56 +108,49 @@ document.addEventListener('DOMContentLoaded', async () => {
                     activeKey = recoveredKey;
                     showVault();
                 } else {
-                    alert("Primero inicia sesión con tu Master Key para activar la biometría.");
+                    alert("Primero inicia sesión con tu Master Key.");
                 }
             } catch (e) {
-                console.error("Error en sensor nativo:", e);
                 alert("Error al acceder al sensor biométrico.");
             }
         });
     }
 
-    // --- 5. Registro ---
+    // --- 6. Registro y Login ---
     ui.btnCreate.addEventListener('click', async () => {
         const email = ui.regEmail.value.trim();
         const pass = ui.regMasterKey.value;
-        
         if (email && pass.length >= 8) {
             try {
                 const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
                 currentUser = { id: userCredential.user.uid, email: email };
                 activeKey = await CryptoEngine.deriveKey(pass);
-                
                 await Auth.saveKey(activeKey);
                 showVault();
-            } catch (error) { 
-                alert("Error: " + error.message); 
-            }
-        } else {
-            alert("La contraseña debe tener al menos 8 caracteres.");
+            } catch (error) { alert("Error: " + error.message); }
         }
     });
 
-    // --- 6. Login Manual ---
     ui.btnUnlock.addEventListener('click', async () => {
         const email = ui.loginUser.value.trim();
         const pass = ui.masterKeyInput.value;
-
         if (!email || !pass) return alert("Ingresa tus credenciales.");
-
         try {
             await signInWithEmailAndPassword(auth, email, pass);
             activeKey = await CryptoEngine.deriveKey(pass);
-            
             await Auth.saveKey(activeKey);
             showVault();
-        } catch (e) { 
-            alert("Clave o correo incorrectos."); 
-        }
+        } catch (e) { alert("Clave o correo incorrectos."); }
     });
 
-    // --- 7. Gestión del Modal ---
-    ui.btnSaveNew.addEventListener('click', () => { ui.modalOverlay.style.display = 'flex'; });
+    // --- 7. Gestión del Modal (Crear/Editar) ---
+    ui.btnSaveNew.addEventListener('click', () => {
+        editingId = null;
+        ui.modalTitle.innerText = "Nueva Credencial";
+        ui.modalOverlay.style.display = 'flex';
+        evaluateStrength("");
+    });
+
     ui.btnCancelSave.addEventListener('click', () => { 
         ui.modalOverlay.style.display = 'none'; 
         clearModalFields(); 
@@ -141,39 +158,213 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     ui.btnConfirmSave.addEventListener('click', async () => {
         const data = {
-            site: ui.newSite.value.trim(),
+            site: ui.newSite.value.trim() || "Sin Título",
             user: ui.newUser.value.trim(),
             email: ui.newEmail.value.trim(),
             notes: ui.newNotes.value.trim(),
             pass: ui.newPass.value
         };
 
-        if (data.site && data.pass) {
-            ui.btnConfirmSave.disabled = true;
-            ui.btnConfirmSave.innerText = "Sincronizando...";
-            await saveCredential(data);
-            ui.modalOverlay.style.display = 'none';
-            ui.btnConfirmSave.disabled = false;
-            ui.btnConfirmSave.innerText = "Guardar en Nube";
-            clearModalFields();
-            await renderVault(); // Forzamos actualización tras guardar
-        } else {
-            alert("El sitio y la contraseña son obligatorios.");
+        if (!data.pass) return alert("La contraseña es obligatoria.");
+
+        if (!editingId) {
+            const isDuplicate = Array.from(document.querySelectorAll('.site-name'))
+                .some(el => el.innerText.toLowerCase() === data.site.toLowerCase());
+            
+            if (isDuplicate) {
+                const proceed = confirm(`Ya existe un registro llamado "${data.site}". ¿Deseas guardarlo de todas formas?`);
+                if (!proceed) return;
+            }
         }
+
+        ui.btnConfirmSave.disabled = true;
+        ui.btnConfirmSave.innerText = "Sincronizando...";
+        
+        await processSave(data);
+
+        ui.modalOverlay.style.display = 'none';
+        ui.btnConfirmSave.disabled = false;
+        ui.btnConfirmSave.innerText = "Guardar en Nube";
+        clearModalFields();
+        await renderVault();
     });
 
     // --- 8. Cierre de Bóveda ---
     ui.btnLock.addEventListener('click', async () => {
         if(confirm("¿Cerrar sesión de la bóveda?")) {
             activeKey = null;
-            Auth.clearSession(); // Limpiamos también la llave biométrica
+            Auth.clearSession();
             await signOut(auth);
             location.reload(); 
         }
     });
 });
 
-// --- Funciones de Utilidad ---
+// --- FUNCIONES DE LÓGICA ---
+
+/**
+ * Evalúa la seguridad con 5 niveles y activa la medalla azul
+ */
+function evaluateStrength(pass) {
+    let score = 0;
+    if (pass.length > 0) {
+        if (pass.length >= 8) score++;
+        if (pass.length >= 12) score++;
+        if (/[A-Z]/.test(pass) && /[0-9]/.test(pass)) score++;
+        if (/[^A-Za-z0-9]/.test(pass)) score++;
+        if (pass.length >= 18) score++; // Quinto punto para nivel Excelente
+    }
+
+    const levels = ["meter-weak", "meter-medium", "meter-good", "meter-very-strong", "meter-excellent"];
+    const labels = ["Muy Débil", "Media", "Buena", "Muy Fuerte", "Excelente"];
+    
+    ui.passMeter.className = ""; 
+    if (pass) {
+        const index = Math.max(0, score - 1);
+        ui.passMeter.classList.add(levels[index]);
+        ui.strengthText.innerText = `Seguridad: ${labels[index]}`;
+        
+        // Mostrar medalla solo en nivel 5 (Excelente / Azul)
+        ui.badge.style.display = (score >= 5) ? "inline-block" : "none";
+    } else {
+        ui.strengthText.innerText = "Nivel de seguridad";
+        ui.badge.style.display = "none";
+    }
+}
+
+/**
+ * Función de importación masiva para ejecutar desde consola
+ */
+window.importarKrypta = async (datos) => {
+    if (!activeKey || !currentUser) return console.error("Error: Bóveda cerrada.");
+    let count = 0;
+    console.log("Iniciando importación...");
+    
+    for (const f of datos) {
+        const pass = f.password || f.pass || f.password_value;
+        if (pass) {
+            try {
+                const encrypted = await CryptoEngine.encrypt(pass, activeKey);
+                await CloudStorage.save(
+                    currentUser.id,
+                    f.title || f.site || f.name || "Importado",
+                    f.user_name || f.username || f.user || "",
+                    f.email || "",
+                    f.note || f.notes || "",
+                    encrypted.cipher,
+                    encrypted.iv
+                );
+                count++;
+                console.log(`✅ [${count}] ${f.title || f.site || 'Registro'} importado.`);
+            } catch (err) {
+                console.error("Error en registro:", f, err);
+            }
+        }
+    }
+    alert(`Importación finalizada: ${count} registros añadidos.`);
+    renderVault();
+};
+
+async function processSave(data) {
+    if (!activeKey || !currentUser) return;
+    try {
+        const encrypted = await CryptoEngine.encrypt(data.pass, activeKey);
+        const payload = {
+            userId: currentUser.id,
+            site: data.site,
+            username: data.user,
+            email: data.email,
+            notes: data.notes,
+            cipher: encrypted.cipher,
+            iv: encrypted.iv
+        };
+
+        if (editingId) {
+            await CloudStorage.update(editingId, payload);
+        } else {
+            await CloudStorage.save(payload.userId, payload.site, payload.username, payload.email, payload.notes, payload.cipher, payload.iv);
+        }
+    } catch (e) { console.error("Error al procesar:", e); }
+}
+
+async function renderVault() {
+    ui.passwordList.innerHTML = '<p class="empty-msg">Accediendo a la nube segura...</p>';
+    const userVault = await CloudStorage.fetch(currentUser.id);
+    ui.passwordList.innerHTML = '';
+
+    if (userVault.length === 0) {
+        ui.passwordList.innerHTML = '<p class="empty-msg">Tu bóveda está vacía.</p>';
+        return;
+    }
+
+    for (const item of userVault) {
+        const card = document.createElement('div');
+        card.className = 'password-card';
+        try {
+            const decrypted = await CryptoEngine.decrypt(item.cipher, item.iv, activeKey);
+            card.innerHTML = `
+                <div class="card-header">
+                    <div class="site-info">
+                        <div class="site-name">${item.site}</div>
+                        ${item.username ? `<div class="detail-row"><b>Usuario:</b> ${item.username}</div>` : ''}
+                        ${item.email ? `<div class="detail-row"><b>Email:</b> ${item.email}</div>` : ''}
+                    </div>
+                    <button class="btn-mini copy-btn" title="Copiar Contraseña">
+                        <span class="material-icons-round">content_copy</span>
+                    </button>
+                </div>
+                ${item.notes ? `<div class="notes-preview">${item.notes}</div>` : ''}
+                <div class="card-actions">
+                    <button class="btn-mini edit-btn" title="Editar">
+                        <span class="material-icons-round">edit</span>
+                    </button>
+                    <button class="btn-mini delete-btn" title="Eliminar">
+                        <span class="material-icons-round">delete_outline</span>
+                    </button>
+                </div>
+            `;
+            
+            card.querySelector('.edit-btn').onclick = () => prepareEdit(item, decrypted);
+            card.querySelector('.delete-btn').onclick = () => deleteEntry(item.id, item.site);
+            card.querySelector('.copy-btn').onclick = (e) => copyToClipboard(e, decrypted);
+
+        } catch (e) {
+            card.innerHTML = `<p class="error">Error de descifrado</p>`;
+        }
+        ui.passwordList.appendChild(card);
+    }
+}
+
+function prepareEdit(item, rawPass) {
+    editingId = item.id;
+    ui.modalTitle.innerText = "Editar Credencial";
+    ui.newSite.value = item.site;
+    ui.newUser.value = item.username || "";
+    ui.newEmail.value = item.email || "";
+    ui.newNotes.value = item.notes || "";
+    ui.newPass.value = rawPass;
+    ui.modalOverlay.style.display = 'flex';
+    evaluateStrength(rawPass);
+}
+
+async function deleteEntry(id, site) {
+    if (confirm(`¿Eliminar permanentemente "${site}"?`)) {
+        await CloudStorage.delete(id);
+        renderVault();
+    }
+}
+
+function copyToClipboard(e, text) {
+    const btn = e.currentTarget;
+    navigator.clipboard.writeText(text);
+    const icon = btn.querySelector('.material-icons-round');
+    icon.textContent = 'check';
+    icon.style.color = '#00ff88';
+    setTimeout(() => {
+        icon.textContent = 'content_copy';
+        icon.style.color = '';
+    }, 1500);
+}
 
 function showScreen(screen) {
     ui.authScreen.style.display = screen === 'auth' ? 'block' : 'none';
@@ -183,91 +374,18 @@ function showScreen(screen) {
 
 function clearModalFields() {
     [ui.newSite, ui.newUser, ui.newEmail, ui.newNotes, ui.newPass].forEach(el => el.value = '');
-}
-
-async function saveCredential(data) {
-    if (!activeKey || !currentUser) return;
-    try {
-        const encryptedPass = await CryptoEngine.encrypt(data.pass, activeKey);
-        await CloudStorage.save(
-            currentUser.id, 
-            data.site, 
-            data.user, 
-            data.email, 
-            data.notes, 
-            encryptedPass.cipher, 
-            encryptedPass.iv
-        );
-    } catch (e) { console.error("Error al guardar:", e); }
-}
-
-async function renderVault() {
-    ui.passwordList.innerHTML = '<p class="empty-msg">Accediendo a la nube segura...</p>';
-    const userVault = await CloudStorage.fetch(currentUser.id);
-
-    ui.passwordList.innerHTML = '';
-    if (userVault.length === 0) {
-        ui.passwordList.innerHTML = '<p class="empty-msg">Tu bóveda está vacía.</p>';
-        return;
-    }
-
-    // Usamos for...of para manejar correctamente las promesas asíncronas de descifrado
-    for (const item of userVault) {
-        const card = document.createElement('div');
-        card.className = 'password-card';
-        try {
-            const decrypted = await CryptoEngine.decrypt(item.cipher, item.iv, activeKey);
-            card.innerHTML = `
-                <div class="info">
-                    <div class="site-name">${item.site}</div>
-                    ${item.username ? `<div class="detail-row"><b>Usuario:</b> ${item.username}</div>` : ''}
-                    ${item.email ? `<div class="detail-row"><b>Email:</b> ${item.email}</div>` : ''}
-                    ${item.notes ? `<div class="notes-preview">${item.notes}</div>` : ''}
-                    <div class="pass-value">••••••••</div>
-                </div>
-                <div class="card-actions">
-                    <button class="primary copy-btn" data-pass="${decrypted}">
-                        <span class="material-icons-round">content_copy</span>
-                    </button>
-                </div>
-            `;
-        } catch (e) {
-            card.innerHTML = `<div class="info"><p class="error">Error: Llave Maestra no coincide.</p></div>`;
-        }
-        ui.passwordList.appendChild(card);
-    }
-    setupCardActions(); 
-}
-
-function setupCardActions() {
-    document.querySelectorAll('.copy-btn').forEach(btn => {
-        btn.onclick = (e) => {
-            e.stopPropagation();
-            navigator.clipboard.writeText(btn.dataset.pass);
-            const icon = btn.querySelector('.material-icons-round');
-            icon.textContent = 'check';
-            icon.style.color = '#00ff88'; // Tu verde de éxito
-            setTimeout(() => {
-                icon.textContent = 'content_copy';
-                icon.style.color = '';
-            }, 1500);
-        };
-    });
+    ui.checkShowNewPass.checked = false;
+    ui.newPass.type = "password";
 }
 
 function showVault() {
     showScreen('vault');
-    ui.btnLock.classList.remove('locked');
-    ui.btnLock.classList.add('unlocked');
     ui.btnLock.innerHTML = '<span class="material-icons-round">lock_open</span>';
     renderVault();
 }
 
-// --- 9. Registro del Service Worker (PWA) ---
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('Krypta PWA: Registrada'))
-            .catch(err => console.error('Krypta PWA: Fallo', err));
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
     });
 }

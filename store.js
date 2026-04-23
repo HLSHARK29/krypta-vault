@@ -1,6 +1,16 @@
 // store.js - Conexión con Firebase Firestore y Auth
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { 
+    getFirestore, 
+    collection, 
+    addDoc, 
+    getDocs, 
+    query, 
+    where, 
+    doc, 
+    updateDoc, 
+    deleteDoc 
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
 /**
@@ -9,7 +19,6 @@ import { getAuth } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth
  * Si las variables de entorno de Netlify no están listas, usará los valores de desarrollo.
  */
 const firebaseConfig = {
-  // Reemplazaremos estos valores en el panel de Netlify más adelante
   apiKey: window.KRYPTA_CONFIG?.API_KEY || "AIzaSyAEXkN-NVI5mcLbnMsYP94n8xrvUM1zDGA",
   authDomain: "krypta-vault.firebaseapp.com",
   projectId: "krypta-vault",
@@ -35,13 +44,13 @@ export const CloudStorage = {
         try {
             await addDoc(collection(db, "vault"), {
                 userId,      // UID único de Firebase Auth
-                site: site || 'Sin nombre',        
+                site: site || 'Sin nombre',         
                 username: username || '', 
                 email: email || '',
                 notes: notes || '',
                 cipher,      
                 iv,          
-                serverTimestamp: Date.now() // Método más moderno para obtener el timestamp
+                serverTimestamp: Date.now() 
             });
             return true;
         } catch (e) {
@@ -58,8 +67,6 @@ export const CloudStorage = {
 
         try {
             const vaultRef = collection(db, "vault");
-            
-            // Consulta filtrada por usuario
             const q = query(
                 vaultRef, 
                 where("userId", "==", userId)
@@ -72,11 +79,44 @@ export const CloudStorage = {
                 results.push({ id: doc.id, ...doc.data() });
             });
             
-            // Ordenamos localmente por el timestamp para evitar índices compuestos en Firebase
             return results.sort((a, b) => b.serverTimestamp - a.serverTimestamp);
         } catch (e) {
             console.error("Krypta Cloud: Error al obtener datos:", e);
             return [];
+        }
+    },
+
+    /**
+     * ACTUALIZAR: Modifica un registro existente usando su ID de documento.
+     */
+    async update(docId, data) {
+        if (!docId) return false;
+        try {
+            const docRef = doc(db, "vault", docId);
+            // Añadimos un timestamp de actualización para mantener el orden
+            await updateDoc(docRef, {
+                ...data,
+                serverTimestamp: Date.now()
+            });
+            return true;
+        } catch (e) {
+            console.error("Krypta Cloud: Error al actualizar:", e);
+            return false;
+        }
+    },
+
+    /**
+     * ELIMINAR: Borra un registro de la base de datos.
+     */
+    async delete(docId) {
+        if (!docId) return false;
+        try {
+            const docRef = doc(db, "vault", docId);
+            await deleteDoc(docRef);
+            return true;
+        } catch (e) {
+            console.error("Krypta Cloud: Error al eliminar:", e);
+            return false;
         }
     }
 };
