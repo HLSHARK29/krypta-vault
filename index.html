@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Krypta | Vault</title>
+    
+    <meta name="theme-color" content="#080808">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-512.png">
+    
+    <link rel="manifest" href="manifest.json">
+
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>KRYPTA</h1>
+            <div id="status-indicator" class="locked" title="Cerrar Bóveda">
+                <span class="material-icons-round">lock</span>
+            </div>
+        </header>
+
+        <main id="main-content">
+            
+            <section id="auth-screen">
+                <div class="glass-card">
+                    <h2>Identidad Requerida</h2>
+                    <p>La bóveda está sellada</p>
+                    
+                    <input type="email" id="login-username" placeholder="Correo electrónico" autocomplete="username" inputmode="email">
+                    
+                    <div class="password-container">
+                        <input type="password" id="master-key" placeholder="Contraseña Maestra" autofocus spellcheck="false" autocomplete="current-password">
+                        <label class="show-pass-control">
+                            <input type="checkbox" class="check-show-pass" data-target="master-key"> 
+                            Mostrar contraseña
+                        </label>
+                    </div>
+                    
+                    <div class="auth-buttons">
+                        <button id="btn-unlock" class="primary">Desbloquear</button>
+                        <button id="btn-biometric" class="secondary" title="Acceso Biométrico">
+                            <span class="material-icons-round">fingerprint</span>
+                        </button>
+                    </div>
+                    
+                    <p class="switch-mode">
+                        ¿No tienes cuenta? <a href="#" id="go-to-register">Regístrate</a>
+                    </p>
+                </div>
+            </section>
+
+            <section id="register-screen" style="display: none;">
+                <div class="glass-card">
+                    <h2>Crear Bóveda</h2>
+                    <p>Configura tu acceso sincronizado</p>
+                    
+                    <input type="email" id="reg-email" placeholder="Correo electrónico" inputmode="email">
+                    
+                    <div class="password-container">
+                        <input type="password" id="reg-master-key" placeholder="Contraseña Maestra (Mín. 8 caracteres)" spellcheck="false" autocomplete="new-password">
+                        <label class="show-pass-control">
+                            <input type="checkbox" class="check-show-pass" data-target="reg-master-key"> 
+                            Mostrar contraseña
+                        </label>
+                    </div>
+                    
+                    <button id="btn-create-account" class="primary">Crear Cuenta</button>
+                    
+                    <p class="switch-mode">
+                        ¿Ya tienes cuenta? <a href="#" id="go-to-login">Inicia sesión</a>
+                    </p>
+                </div>
+            </section>
+
+            <section id="vault-screen" style="display: none;">
+                <div class="actions" style="margin-bottom: 20px;">
+                    <button id="btn-save-new" class="primary">
+                        <span class="material-icons-round" style="margin-right: 8px;">add</span>
+                        Nueva Credencial
+                    </button>
+                </div>
+                
+                <div id="password-list">
+                    <p class="empty-msg">Cargando registros desde la nube...</p>
+                </div>
+            </section>
+
+            <div id="modal-overlay" style="display: none;">
+                <div class="glass-card modal">
+                    <h3>Nueva Credencial</h3>
+                    <input type="text" id="new-site" placeholder="Sitio Web (ej. GitHub)" spellcheck="false">
+                    <input type="text" id="new-user" placeholder="Usuario" autocomplete="off">
+                    <input type="email" id="new-email" placeholder="Correo electrónico" inputmode="email">
+                    <textarea id="new-notes" placeholder="Notas adicionales..."></textarea>
+                    
+                    <div class="password-container">
+                        <input type="password" id="new-pass" placeholder="Contraseña" autocomplete="new-password" spellcheck="false">
+                        <label class="show-pass-control">
+                            <input type="checkbox" class="check-show-pass" data-target="new-pass"> 
+                            Mostrar contraseña
+                        </label>
+                    </div>
+                    
+                    <div class="auth-buttons">
+                        <button id="btn-cancel-save" class="secondary">Cancelar</button>
+                        <button id="btn-confirm-save" class="primary">Guardar en Nube</button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+
+        <footer>KRYPTA V1.0 | SEGURIDAD PUNTA A PUNTA SINCRONIZADA</footer>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
