@@ -35,7 +35,7 @@ const ui = {
     newPass: document.getElementById('new-pass'),
     passMeter: document.getElementById('password-strength-meter'),
     strengthText: document.getElementById('strength-text'),
-    badge: document.getElementById('excellent-badge'), // Selector de la medalla
+    badge: document.getElementById('excellent-badge'), 
     checkShowNewPass: document.getElementById('check-show-new-pass'),
 
     btnUnlock: document.getElementById('btn-unlock'),
@@ -54,7 +54,7 @@ const ui = {
 
 document.addEventListener('DOMContentLoaded', async () => {
     
-    // --- 1. Lógica de Visibilidad y Evaluación de Fuerza ---
+    // --- 1. Lógica de Visibilidad ---
     document.body.addEventListener('change', (e) => {
         if (e.target.classList.contains('check-show-pass')) {
             const targetId = e.target.getAttribute('data-target');
@@ -69,11 +69,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         evaluateStrength(ui.newPass.value);
     });
 
-    // --- 2. Generador de Contraseñas (Ajustado a nivel Excelente) ---
+    // --- 2. Generador de Contraseñas ---
     ui.btnGenerate.addEventListener('click', () => {
         const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=";
         let retVal = "";
-        for (let i = 0; i < 22; ++i) { // Aumentado a 22 para asegurar nivel Excelente
+        for (let i = 0; i < 22; ++i) { 
             retVal += charset.charAt(Math.floor(Math.random() * charset.length));
         }
         ui.newPass.value = retVal;
@@ -143,7 +143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) { alert("Clave o correo incorrectos."); }
     });
 
-    // --- 7. Gestión del Modal (Crear/Editar) ---
+    // --- 7. Gestión del Modal ---
     ui.btnSaveNew.addEventListener('click', () => {
         editingId = null;
         ui.modalTitle.innerText = "Nueva Credencial";
@@ -166,16 +166,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         if (!data.pass) return alert("La contraseña es obligatoria.");
-
-        if (!editingId) {
-            const isDuplicate = Array.from(document.querySelectorAll('.site-name'))
-                .some(el => el.innerText.toLowerCase() === data.site.toLowerCase());
-            
-            if (isDuplicate) {
-                const proceed = confirm(`Ya existe un registro llamado "${data.site}". ¿Deseas guardarlo de todas formas?`);
-                if (!proceed) return;
-            }
-        }
 
         ui.btnConfirmSave.disabled = true;
         ui.btnConfirmSave.innerText = "Sincronizando...";
@@ -200,10 +190,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
-// --- FUNCIONES DE LÓGICA ---
-
 /**
- * Evalúa la seguridad con 5 niveles y activa la medalla azul
+ * Evalúa la seguridad e inyecta la barra visual definida en CSS
  */
 function evaluateStrength(pass) {
     let score = 0;
@@ -212,58 +200,27 @@ function evaluateStrength(pass) {
         if (pass.length >= 12) score++;
         if (/[A-Z]/.test(pass) && /[0-9]/.test(pass)) score++;
         if (/[^A-Za-z0-9]/.test(pass)) score++;
-        if (pass.length >= 18) score++; // Quinto punto para nivel Excelente
+        if (pass.length >= 18) score++; 
     }
 
     const levels = ["meter-weak", "meter-medium", "meter-good", "meter-very-strong", "meter-excellent"];
     const labels = ["Muy Débil", "Media", "Buena", "Muy Fuerte", "Excelente"];
     
+    // Inyectamos la barra interna para que el CSS pueda animarla
+    ui.passMeter.innerHTML = '<div class="meter-bar"></div>';
     ui.passMeter.className = ""; 
+
     if (pass) {
         const index = Math.max(0, score - 1);
         ui.passMeter.classList.add(levels[index]);
         ui.strengthText.innerText = `Seguridad: ${labels[index]}`;
-        
-        // Mostrar medalla solo en nivel 5 (Excelente / Azul)
         ui.badge.style.display = (score >= 5) ? "inline-block" : "none";
     } else {
         ui.strengthText.innerText = "Nivel de seguridad";
         ui.badge.style.display = "none";
+        ui.passMeter.innerHTML = ""; 
     }
 }
-
-/**
- * Función de importación masiva para ejecutar desde consola
- */
-window.importarKrypta = async (datos) => {
-    if (!activeKey || !currentUser) return console.error("Error: Bóveda cerrada.");
-    let count = 0;
-    console.log("Iniciando importación...");
-    
-    for (const f of datos) {
-        const pass = f.password || f.pass || f.password_value;
-        if (pass) {
-            try {
-                const encrypted = await CryptoEngine.encrypt(pass, activeKey);
-                await CloudStorage.save(
-                    currentUser.id,
-                    f.title || f.site || f.name || "Importado",
-                    f.user_name || f.username || f.user || "",
-                    f.email || "",
-                    f.note || f.notes || "",
-                    encrypted.cipher,
-                    encrypted.iv
-                );
-                count++;
-                console.log(`✅ [${count}] ${f.title || f.site || 'Registro'} importado.`);
-            } catch (err) {
-                console.error("Error en registro:", f, err);
-            }
-        }
-    }
-    alert(`Importación finalizada: ${count} registros añadidos.`);
-    renderVault();
-};
 
 async function processSave(data) {
     if (!activeKey || !currentUser) return;
@@ -376,6 +333,9 @@ function clearModalFields() {
     [ui.newSite, ui.newUser, ui.newEmail, ui.newNotes, ui.newPass].forEach(el => el.value = '');
     ui.checkShowNewPass.checked = false;
     ui.newPass.type = "password";
+    ui.passMeter.innerHTML = "";
+    ui.badge.style.display = "none";
+    ui.strengthText.innerText = "Nivel de seguridad";
 }
 
 function showVault() {

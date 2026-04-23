@@ -101,6 +101,13 @@ input, textarea {
     margin-bottom: 15px;
     transition: all 0.3s ease;
     font-family: inherit;
+}
+
+/* CORRECCIÓN: Evitamos que el checkbox herede el 'none' que lo hace invisible */
+input[type="text"], 
+input[type="password"], 
+input[type="email"], 
+textarea {
     -webkit-appearance: none;
 }
 
@@ -142,7 +149,7 @@ textarea {
     border-color: var(--accent);
 }
 
-/* --- MEDIDOR DE SEGURIDAD ACTUALIZADO --- */
+/* --- MEDIDOR DE SEGURIDAD --- */
 .strength-wrapper {
     margin-bottom: 20px;
     padding: 0 5px;
@@ -155,6 +162,7 @@ textarea {
     margin-bottom: 8px;
     overflow: hidden;
     width: 100%;
+    display: block; /* Asegura visibilidad */
 }
 
 /* Barra interna del medidor */
@@ -162,16 +170,17 @@ textarea {
     height: 100%;
     width: 0%;
     transition: width 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.3s ease;
+    display: block;
 }
 
-/* Estados del Semáforo */
-.meter-weak .meter-bar { width: 20%; background: var(--danger); }
-.meter-medium .meter-bar { width: 40%; background: var(--warning); }
-.meter-good .meter-bar { width: 60%; background: #ffff4d; }
-.meter-very-strong .meter-bar { width: 80%; background: var(--success); }
+/* Estados del Semáforo (CORRECCIÓN: Forzamos el background para que LiveServer/Netlify lo pinten) */
+.meter-weak .meter-bar { width: 20%; background-color: var(--danger) !important; }
+.meter-medium .meter-bar { width: 40%; background-color: var(--warning) !important; }
+.meter-good .meter-bar { width: 60%; background-color: #ffff4d !important; }
+.meter-very-strong .meter-bar { width: 80%; background-color: var(--success) !important; }
 .meter-excellent .meter-bar { 
     width: 100%; 
-    background: var(--excellent); 
+    background-color: var(--excellent) !important; 
     box-shadow: 0 0 10px var(--excellent);
 }
 
@@ -200,7 +209,7 @@ textarea {
     50% { transform: scale(1.2); opacity: 1; filter: drop-shadow(0 0 5px var(--excellent)); }
 }
 
-/* Control de Visibilidad */
+/* Control de Visibilidad (CORRECCIÓN: Checkbox visible y alineado) */
 .show-pass-control {
     display: flex;
     align-items: center;
@@ -210,13 +219,17 @@ textarea {
     color: var(--text-dim);
     cursor: pointer;
     user-select: none;
+    padding: 5px 0;
 }
 
 .show-pass-control input[type="checkbox"] {
+    -webkit-appearance: checkbox !important; /* Forzamos apariencia estándar */
+    appearance: checkbox !important;
     width: 18px;
     height: 18px;
     margin: 0;
     accent-color: var(--accent);
+    cursor: pointer;
 }
 
 /* Botones */
