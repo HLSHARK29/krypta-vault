@@ -12,6 +12,7 @@ import {
 let activeKey = null;
 let currentUser = null;
 let editingId = null; 
+let cachedVault = []; // Para búsqueda y ordenamiento rápido sin volver a la nube
 
 // Selectores del DOM
 const ui = {
@@ -49,12 +50,38 @@ const ui = {
     
     passwordList: document.getElementById('password-list'),
     goToRegister: document.getElementById('go-to-register'),
-    goToLogin: document.getElementById('go-to-login')
+    goToLogin: document.getElementById('go-to-login'),
+
+    // Nuevos Selectores
+    vaultSearch: document.getElementById('vault-search'),
+    sortSelect: document.getElementById('sort-select'),
+    azSidebar: document.getElementById('az-sidebar')
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
     
-    // --- 1. Lógica de Visibilidad ---
+    // --- 1. Lógica de Desbloqueo con Teclado (Enter) ---
+    const handleLoginEnter = (e) => {
+        if (e.key === 'Enter') ui.btnUnlock.click();
+    };
+    ui.masterKeyInput.addEventListener('keypress', handleLoginEnter);
+    ui.loginUser.addEventListener('keypress', handleLoginEnter);
+
+    // --- 2. Lógica de Búsqueda y Ordenamiento ---
+    ui.vaultSearch.addEventListener('input', () => {
+        const query = ui.vaultSearch.value.toLowerCase();
+        const filtered = cachedVault.filter(item => 
+            item.site.toLowerCase().includes(query) || 
+            (item.username && item.username.toLowerCase().includes(query))
+        );
+        renderFilteredVault(filtered);
+    });
+
+    ui.sortSelect.addEventListener('change', () => {
+        applySortAndRender();
+    });
+
+    // --- 3. Lógica de Visibilidad ---
     document.body.addEventListener('change', (e) => {
         if (e.target.classList.contains('check-show-pass')) {
             const targetId = e.target.getAttribute('data-target');
@@ -69,7 +96,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         evaluateStrength(ui.newPass.value);
     });
 
-    // --- 2. Generador de Contraseñas ---
+    // --- 4. Generador de Contraseñas ---
     ui.btnGenerate.addEventListener('click', () => {
         const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=";
         let retVal = "";
@@ -82,11 +109,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         evaluateStrength(retVal);
     });
 
-    // --- 3. Navegación ---
+    // --- 5. Navegación ---
     ui.goToRegister.addEventListener('click', (e) => { e.preventDefault(); showScreen('register'); });
     ui.goToLogin.addEventListener('click', (e) => { e.preventDefault(); showScreen('auth'); });
 
-    // --- 4. Persistencia de Sesión Firebase ---
+    // --- 6. Persistencia de Sesión Firebase ---
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUser = { id: user.uid, email: user.email };
@@ -96,7 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // --- 5. Soporte Biométrico ---
+    // --- 7. Soporte Biométrico ---
     const hasBiometrics = await Auth.checkSupport();
     if (!hasBiometrics) {
         ui.btnBiometric.style.display = 'none';
@@ -116,7 +143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- 6. Registro y Login ---
+    // --- 8. Registro y Login ---
     ui.btnCreate.addEventListener('click', async () => {
         const email = ui.regEmail.value.trim();
         const pass = ui.regMasterKey.value;
@@ -143,7 +170,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) { alert("Clave o correo incorrectos."); }
     });
 
-    // --- 7. Gestión del Modal ---
+    // --- 9. Gestión del Modal ---
     ui.btnSaveNew.addEventListener('click', () => {
         editingId = null;
         ui.modalTitle.innerText = "Nueva Credencial";
@@ -179,7 +206,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         await renderVault();
     });
 
-    // --- 8. Cierre de Bóveda ---
+    // --- 10. Cierre de Bóveda ---
     ui.btnLock.addEventListener('click', async () => {
         if(confirm("¿Cerrar sesión de la bóveda?")) {
             activeKey = null;
@@ -189,6 +216,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 });
+
+/**
+ * Funciones de Búsqueda y Ordenamiento
+ */
+function applySortAndRender() {
+    const criteria = ui.sortSelect.value;
+    let sortedData = [...cachedVault];
+
+    if (criteria === 'alpha') {
+        sortedData.sort((a, b) => a.site.localeCompare(b.site, undefined, { numeric: true, sensitivity: 'base' }));
+    } else if (criteria === 'oldest') {
+        // Asumiendo que CloudStorage devuelve el orden natural de creación
+        // Si tienes un campo timestamp, deberías usarlo aquí.
+    } else {
+        sortedData.reverse(); // Newest first
+    }
+
+    renderFilteredVault(sortedData);
+}
+
+function renderAZSidebar(data) {
+    ui.azSidebar.innerHTML = '';
+    const letters = [...new Set(data.map(item => item.site[0].toUpperCase()))].sort();
+    
+    letters.forEach(letter => {
+        const link = document.createElement('a');
+        link.href = '#';
+        link.className = 'az-letter';
+        link.innerText = letter;
+        link.onclick = (e) => {
+            e.preventDefault();
+            const target = Array.from(ui.passwordList.children).find(card => 
+                card.querySelector('.site-name')?.innerText[0].toUpperCase() === letter
+            );
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+        ui.azSidebar.appendChild(link);
+    });
+}
 
 /**
  * Evalúa la seguridad e inyecta la barra visual definida en CSS
@@ -206,7 +272,6 @@ function evaluateStrength(pass) {
     const levels = ["meter-weak", "meter-medium", "meter-good", "meter-very-strong", "meter-excellent"];
     const labels = ["Muy Débil", "Media", "Buena", "Muy Fuerte", "Excelente"];
     
-    // Inyectamos la barra interna para que el CSS pueda animarla
     ui.passMeter.innerHTML = '<div class="meter-bar"></div>';
     ui.passMeter.className = ""; 
 
@@ -246,15 +311,19 @@ async function processSave(data) {
 
 async function renderVault() {
     ui.passwordList.innerHTML = '<p class="empty-msg">Accediendo a la nube segura...</p>';
-    const userVault = await CloudStorage.fetch(currentUser.id);
+    cachedVault = await CloudStorage.fetch(currentUser.id);
+    applySortAndRender();
+}
+
+async function renderFilteredVault(data) {
     ui.passwordList.innerHTML = '';
 
-    if (userVault.length === 0) {
-        ui.passwordList.innerHTML = '<p class="empty-msg">Tu bóveda está vacía.</p>';
+    if (data.length === 0) {
+        ui.passwordList.innerHTML = '<p class="empty-msg">No se encontraron registros.</p>';
         return;
     }
 
-    for (const item of userVault) {
+    for (const item of data) {
         const card = document.createElement('div');
         card.className = 'password-card';
         try {
@@ -290,6 +359,7 @@ async function renderVault() {
         }
         ui.passwordList.appendChild(card);
     }
+    renderAZSidebar(data);
 }
 
 function prepareEdit(item, rawPass) {

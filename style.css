@@ -45,7 +45,7 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 40px;
+    margin-bottom: 30px;
     padding: 10px 0;
 }
 
@@ -68,6 +68,108 @@ header h1 {
 #status-indicator:active { transform: scale(0.9); }
 #status-indicator.locked { color: var(--text-dim); }
 #status-indicator.unlocked { color: var(--accent); }
+
+/* --- CONTROLES DE BÓVEDA (NUEVO) --- */
+.vault-controls {
+    margin-bottom: 25px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    background: #000;
+    border: 1px solid #282828;
+    border-radius: 14px;
+    padding: 0 15px;
+    transition: border-color 0.3s;
+}
+
+.search-box:focus-within {
+    border-color: var(--accent);
+}
+
+.search-box span {
+    color: var(--text-dim);
+    margin-right: 10px;
+}
+
+.search-box input {
+    border: none;
+    background: transparent;
+    margin-bottom: 0;
+    padding: 14px 0;
+}
+
+.search-box input:focus {
+    box-shadow: none;
+}
+
+.filter-row {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.sort-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-dim);
+}
+
+.sort-group span { font-size: 1.2rem; }
+
+select {
+    background: transparent;
+    color: var(--accent);
+    border: none;
+    font-family: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+/* Layout con Barra Lateral */
+.vault-layout {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 15px;
+    position: relative;
+}
+
+#password-list {
+    min-height: 200px;
+}
+
+.az-nav {
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 20px;
+    height: fit-content;
+    background: rgba(20, 20, 20, 0.5);
+    padding: 8px 4px;
+    border-radius: 20px;
+    backdrop-filter: blur(5px);
+    border: 1px solid var(--card-border);
+}
+
+.az-letter {
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 0.65rem;
+    padding: 2px 4px;
+    text-align: center;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.az-letter.active { color: var(--accent); }
+
+/* --- FIN CONTROLES NUEVOS --- */
 
 /* Títulos */
 h2, h3 {
@@ -103,7 +205,6 @@ input, textarea {
     font-family: inherit;
 }
 
-/* CORRECCIÓN: Evitamos que el checkbox herede el 'none' que lo hace invisible */
 input[type="text"], 
 input[type="password"], 
 input[type="email"], 
@@ -162,10 +263,9 @@ textarea {
     margin-bottom: 8px;
     overflow: hidden;
     width: 100%;
-    display: block; /* Asegura visibilidad */
+    display: block;
 }
 
-/* Barra interna del medidor */
 .meter-bar {
     height: 100%;
     width: 0%;
@@ -173,7 +273,6 @@ textarea {
     display: block;
 }
 
-/* Estados del Semáforo (CORRECCIÓN: Forzamos el background para que LiveServer/Netlify lo pinten) */
 .meter-weak .meter-bar { width: 20%; background-color: var(--danger) !important; }
 .meter-medium .meter-bar { width: 40%; background-color: var(--warning) !important; }
 .meter-good .meter-bar { width: 60%; background-color: #ffff4d !important; }
@@ -197,7 +296,6 @@ textarea {
     letter-spacing: 1px;
 }
 
-/* Animación de Medalla */
 #excellent-badge {
     color: var(--excellent);
     font-size: 1.1rem;
@@ -209,7 +307,6 @@ textarea {
     50% { transform: scale(1.2); opacity: 1; filter: drop-shadow(0 0 5px var(--excellent)); }
 }
 
-/* Control de Visibilidad (CORRECCIÓN: Checkbox visible y alineado) */
 .show-pass-control {
     display: flex;
     align-items: center;
@@ -223,7 +320,7 @@ textarea {
 }
 
 .show-pass-control input[type="checkbox"] {
-    -webkit-appearance: checkbox !important; /* Forzamos apariencia estándar */
+    -webkit-appearance: checkbox !important;
     appearance: checkbox !important;
     width: 18px;
     height: 18px;
@@ -273,11 +370,6 @@ button.secondary {
     width: 60px;
     height: 56px;
     border-radius: 14px;
-}
-
-button.secondary:active {
-    background: #252525;
-    border-color: var(--accent);
 }
 
 /* Modal */
@@ -334,7 +426,6 @@ button.secondary:active {
     border-left: 3px solid var(--accent);
 }
 
-/* Acciones de Tarjeta */
 .card-actions {
     display: flex;
     gap: 8px;
@@ -354,7 +445,6 @@ button.secondary:active {
 }
 
 .btn-mini:hover { color: white; border-color: var(--accent); }
-.btn-mini.delete:hover { color: var(--danger); border-color: var(--danger); }
 
 /* Footer */
 footer {

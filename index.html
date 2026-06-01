@@ -81,15 +81,38 @@
             </section>
 
             <section id="vault-screen" style="display: none;">
-                <div class="actions" style="margin-bottom: 20px;">
+                <div class="actions">
                     <button id="btn-save-new" class="primary">
                         <span class="material-icons-round" style="margin-right: 8px;">add</span>
                         Nueva Credencial
                     </button>
                 </div>
+
+                <div class="vault-controls glass-card">
+                    <div class="search-box">
+                        <span class="material-icons-round">search</span>
+                        <input type="text" id="vault-search" placeholder="Buscar por sitio o usuario...">
+                    </div>
+                    
+                    <div class="filter-row">
+                        <div class="sort-group">
+                            <span class="material-icons-round">sort</span>
+                            <select id="sort-select">
+                                <option value="newest">Más recientes</option>
+                                <option value="oldest">Más antiguos</option>
+                                <option value="alpha">A-Z (Alfabético)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
                 
-                <div id="password-list">
-                    <p class="empty-msg">Cargando registros desde la nube...</p>
+                <div class="vault-layout">
+                    <div id="password-list">
+                        <p class="empty-msg">Cargando registros desde la nube...</p>
+                    </div>
+
+                    <nav id="az-sidebar" class="az-nav">
+                        </nav>
                 </div>
             </section>
 

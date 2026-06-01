@@ -1,11 +1,11 @@
-const CACHE_NAME = 'krypta-v4'; // Incrementamos versión por los cambios de estructura
+const CACHE_NAME = 'krypta-v5'; // Versión actualizada para controles de búsqueda y A-Z
 
-// Recursos críticos para que la bóveda funcione offline
+// Recursos críticos con parámetros de versión para coincidir con index.html
 const assets = [
   './',
   'index.html',
-  'style.css',
-  'app.js',
+  'style.css?v=1.0.1',
+  'app.js?v=1.0.1',
   'auth.js',
   'crypto.js',
   'store.js',
@@ -15,7 +15,7 @@ const assets = [
   // Fuentes e Iconos
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap',
   'https://fonts.googleapis.com/icon?family=Material+Icons+Round',
-  // Librerías de Firebase (Necesarias para que el código no rompa offline)
+  // Librerías de Firebase
   'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js',
   'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js',
   'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js'
@@ -25,8 +25,7 @@ const assets = [
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      console.log('Krypta SW: Cacheando integridad de la bóveda...');
-      // Usamos un bucle para cachear uno a uno y evitar que un solo error detenga todo
+      console.log('Krypta SW: Asegurando integridad de la bóveda v5...');
       return Promise.all(
         assets.map(url => {
           return cache.add(url).catch(err => console.warn(`Error cacheando: ${url}`, err));
@@ -46,15 +45,13 @@ self.addEventListener('activate', e => {
       );
     })
   );
-  self.clients.claim(); // Toma el control de las pestañas abiertas inmediatamente
+  self.clients.claim();
 });
 
 // 3. Estrategia de carga: Cache First, Network Fallback
 self.addEventListener('fetch', e => {
-  // Solo interceptamos peticiones GET (estándar para assets)
   if (e.request.method !== 'GET') return;
 
-  // No cacheamos peticiones de autenticación activa o base de datos en tiempo real
   if (
     e.request.url.includes('firestore.googleapis.com') || 
     e.request.url.includes('identitytoolkit') ||
@@ -68,10 +65,8 @@ self.addEventListener('fetch', e => {
       if (cachedResponse) return cachedResponse;
 
       return fetch(e.request).then(networkResponse => {
-        // Opcional: Podrías cachear nuevos recursos aquí si quisieras (Stale-while-revalidate)
         return networkResponse;
       }).catch(() => {
-        // Si no hay red ni caché para una página, podrías devolver un offline.html (opcional)
         console.error('Krypta SW: Recurso no disponible offline.');
       });
     })
