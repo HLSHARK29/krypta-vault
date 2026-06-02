@@ -69,7 +69,7 @@ header h1 {
 #status-indicator.locked { color: var(--text-dim); }
 #status-indicator.unlocked { color: var(--accent); }
 
-/* --- CONTROLES DE BÓVEDA (NUEVO) --- */
+/* --- CONTROLES DE BÓVEDA --- */
 .vault-controls {
     margin-bottom: 25px;
     padding: 20px;
@@ -132,12 +132,13 @@ select {
     font-weight: 600;
 }
 
-/* Layout con Barra Lateral */
+/* Layout con Barra Lateral Arreglado para Móvil */
 .vault-layout {
     display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 15px;
+    grid-template-columns: 1fr 30px; /* Espacio fijo reservado para que no se desplace */
+    gap: 12px;
     position: relative;
+    width: 100%;
 }
 
 #password-list {
@@ -149,25 +150,28 @@ select {
     flex-direction: column;
     position: sticky;
     top: 20px;
-    height: fit-content;
-    background: rgba(20, 20, 20, 0.5);
-    padding: 8px 4px;
+    height: calc(100vh - 200px); /* Ocupa el alto disponible de la pantalla */
+    justify-content: space-between; /* Distribuye las letras uniformemente */
+    background: rgba(20, 20, 20, 0.7);
+    padding: 10px 0;
     border-radius: 20px;
-    backdrop-filter: blur(5px);
+    backdrop-filter: blur(8px);
     border: 1px solid var(--card-border);
+    z-index: 10;
 }
 
 .az-letter {
     color: var(--text-dim);
     text-decoration: none;
     font-size: 0.65rem;
-    padding: 2px 4px;
+    padding: 2px 0;
     text-align: center;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
+    transition: color 0.2s;
 }
 
-.az-letter.active { color: var(--accent); }
+.az-letter:active, .az-letter.active { color: var(--accent); }
 
 /* --- FIN CONTROLES NUEVOS --- */
 
