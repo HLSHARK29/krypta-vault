@@ -29,7 +29,7 @@ body {
     display: flex;
     justify-content: center;
     min-height: 100vh;
-    overflow-x: hidden;
+    overflow-x: hidden; /* Evita scrolls horizontales accidentales */
 }
 
 #app {
@@ -132,13 +132,15 @@ select {
     font-weight: 600;
 }
 
-/* Layout con Barra Lateral Arreglado para Móvil */
+/* Layout con Barra Lateral Arreglado para Móvil con Relación de Aspecto Flexible */
 .vault-layout {
     display: grid;
-    grid-template-columns: 1fr 30px; /* Espacio fijo reservado para que no se desplace */
-    gap: 12px;
+    /* minmax(0, 1fr) permite que la lista se encoja dinámicamente si el ancho de la pantalla es crítico */
+    grid-template-columns: minmax(0, 1fr) 32px; 
+    gap: 10px;
     position: relative;
     width: 100%;
+    align-items: start;
 }
 
 #password-list {
@@ -150,12 +152,12 @@ select {
     flex-direction: column;
     position: sticky;
     top: 20px;
-    height: calc(100vh - 200px); /* Ocupa el alto disponible de la pantalla */
+    height: 75vh; /* Ajustado de 100vh-200px para evitar que el área del teclado o UI móvil la colapse */
     justify-content: space-between; /* Distribuye las letras uniformemente */
-    background: rgba(20, 20, 20, 0.7);
-    padding: 10px 0;
-    border-radius: 20px;
-    backdrop-filter: blur(8px);
+    background: rgba(20, 20, 20, 0.8);
+    padding: 12px 0;
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
     border: 1px solid var(--card-border);
     z-index: 10;
 }
@@ -163,8 +165,8 @@ select {
 .az-letter {
     color: var(--text-dim);
     text-decoration: none;
-    font-size: 0.65rem;
-    padding: 2px 0;
+    font-size: 0.6rem; /* Reducido sutilmente para asegurar que el alfabeto completo quepa verticalmente */
+    padding: 1px 0;
     text-align: center;
     font-weight: 700;
     text-transform: uppercase;
@@ -398,7 +400,7 @@ button.secondary {
     animation: slideUp 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* Tarjetas de Bóveda */
+/* Tarjetas de Bóveda Flexibles */
 .password-card {
     background: var(--card-bg);
     border: 1px solid var(--card-border);
@@ -408,18 +410,39 @@ button.secondary {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    width: 100%; /* Obliga a la tarjeta a mantenerse dentro de los límites de su columna grid */
     animation: fadeIn 0.4s ease forwards;
+    word-wrap: break-word; /* Rompe textos o URLs extremadamente largas si es necesario */
 }
 
 .card-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    gap: 10px;
 }
 
-.site-info { flex: 1; }
-.site-name { font-weight: 600; font-size: 1rem; color: var(--accent); margin-bottom: 4px; }
-.detail-row { font-size: 0.85rem; color: var(--text-dim); margin-bottom: 2px; }
+.site-info { 
+    flex: 1; 
+    min-width: 0; /* Previene que textos largos fuercen a expandir la tarjeta horizontalmente */
+}
+
+.site-name { 
+    font-weight: 600; 
+    font-size: 1rem; 
+    color: var(--accent); 
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* Corta de manera limpia con puntos suspensivos si desborda */
+}
+
+.detail-row { 
+    font-size: 0.85rem; 
+    color: var(--text-dim); 
+    margin-bottom: 2px;
+    overflow-wrap: break-word;
+}
 
 .notes-preview {
     padding: 8px 12px;
