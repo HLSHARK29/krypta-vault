@@ -1,6 +1,6 @@
-const CACHE_NAME = 'krypta-v5'; // Versión actualizada para controles de búsqueda y A-Z
+const CACHE_NAME = 'krypta-v6'; // Incrementamos a v6 para forzar el ciclo de vida
 
-// Recursos críticos con parámetros de versión para coincidir con index.html
+// Recursos críticos con parámetros de versión
 const assets = [
   './',
   'index.html',
@@ -21,11 +21,11 @@ const assets = [
   'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js'
 ];
 
-// 1. Instalación: Cacheo inicial
+// 1. Instalación: Cacheo inicial y SKIP WAITING
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      console.log('Krypta SW: Asegurando integridad de la bóveda v5...');
+      console.log('Krypta SW: Instalando nueva versión...');
       return Promise.all(
         assets.map(url => {
           return cache.add(url).catch(err => console.warn(`Error cacheando: ${url}`, err));
@@ -33,10 +33,11 @@ self.addEventListener('install', e => {
       );
     })
   );
+  // FORZAR ACTIVACIÓN: No permite que el SW viejo se quede esperando
   self.skipWaiting();
 });
 
-// 2. Activación: Limpieza de versiones viejas
+// 2. Activación: Limpieza y CLAIM
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys => {
@@ -45,13 +46,17 @@ self.addEventListener('activate', e => {
       );
     })
   );
+  // Reclamar el control de todas las pestañas abiertas de inmediato
   self.clients.claim();
 });
 
-// 3. Estrategia de carga: Cache First, Network Fallback
+// 3. Estrategia de carga: Network First (Red primero, si falla, Cache)
+// Cambiamos de "Cache First" a "Network First" para evitar que el usuario 
+// vea versiones viejas si tiene conexión a internet.
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
 
+  // Excluir llamadas de Firebase y Auth para que funcionen siempre online
   if (
     e.request.url.includes('firestore.googleapis.com') || 
     e.request.url.includes('identitytoolkit') ||
@@ -61,14 +66,17 @@ self.addEventListener('fetch', e => {
   }
 
   e.respondWith(
-    caches.match(e.request).then(cachedResponse => {
-      if (cachedResponse) return cachedResponse;
-
-      return fetch(e.request).then(networkResponse => {
-        return networkResponse;
-      }).catch(() => {
-        console.error('Krypta SW: Recurso no disponible offline.');
-      });
-    })
+    fetch(e.request)
+      .then(networkResponse => {
+        // Si la red responde, actualizamos el caché dinámicamente
+        return caches.open(CACHE_NAME).then(cache => {
+          cache.put(e.request, networkResponse.clone());
+          return networkResponse;
+        });
+      })
+      .catch(() => {
+        // Si no hay internet, servimos desde el caché
+        return caches.match(e.request);
+      })
   );
 });

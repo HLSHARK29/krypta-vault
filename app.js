@@ -13,6 +13,7 @@ let activeKey = null;
 let currentUser = null;
 let editingId = null; 
 let cachedVault = []; // Para búsqueda y ordenamiento rápido sin volver a la nube
+let inactivityTimeout; // Control de sesión por inactividad
 
 // Selectores del DOM
 const ui = {
@@ -57,6 +58,36 @@ const ui = {
     sortSelect: document.getElementById('sort-select'),
     azSidebar: document.getElementById('az-sidebar')
 };
+
+// --- NUEVA LÓGICA DE SEGURIDAD: INACTIVIDAD ---
+function resetInactivityTimer() {
+    clearTimeout(inactivityTimeout);
+    if (activeKey) { // Solo si la bóveda está abierta
+        inactivityTimeout = setTimeout(() => {
+            handleAutoLock();
+        }, 60000); // 1 minuto
+    }
+}
+
+async function handleAutoLock() {
+    activeKey = null;
+    Auth.clearSession();
+    await signOut(auth);
+    alert("Sesión cerrada por inactividad.");
+    location.reload();
+}
+
+// Detectar actividad en el dispositivo
+['mousedown', 'touchstart', 'scroll', 'keypress', 'click'].forEach(event => {
+    window.addEventListener(event, resetInactivityTimer, true);
+});
+
+// Bloqueo inmediato al salir de la app o cambiar pestaña
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden && activeKey) {
+        handleAutoLock();
+    }
+});
 
 document.addEventListener('DOMContentLoaded', async () => {
     
@@ -227,8 +258,7 @@ function applySortAndRender() {
     if (criteria === 'alpha') {
         sortedData.sort((a, b) => a.site.localeCompare(b.site, undefined, { numeric: true, sensitivity: 'base' }));
     } else if (criteria === 'oldest') {
-        // Asumiendo que CloudStorage devuelve el orden natural de creación
-        // Si tienes un campo timestamp, deberías usarlo aquí.
+        // Orden natural
     } else {
         sortedData.reverse(); // Newest first
     }
@@ -374,10 +404,17 @@ function prepareEdit(item, rawPass) {
     evaluateStrength(rawPass);
 }
 
+// CORRECCIÓN: Función de borrado con actualización inmediata de caché local
 async function deleteEntry(id, site) {
     if (confirm(`¿Eliminar permanentemente "${site}"?`)) {
-        await CloudStorage.delete(id);
-        renderVault();
+        try {
+            await CloudStorage.delete(id);
+            // Actualizamos la caché en memoria para que desaparezca visualmente de inmediato
+            cachedVault = cachedVault.filter(item => item.id !== id);
+            applySortAndRender(); // Re-renderiza la lista filtrada
+        } catch (e) {
+            alert("Error al intentar eliminar el registro.");
+        }
     }
 }
 
@@ -412,10 +449,12 @@ function showVault() {
     showScreen('vault');
     ui.btnLock.innerHTML = '<span class="material-icons-round">lock_open</span>';
     renderVault();
+    resetInactivityTimer(); // Iniciamos el conteo al entrar a la bóveda
 }
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
+        // Nota: El manejo de actualización automática se moverá aquí tras configurar sw.js
         navigator.serviceWorker.register('./sw.js').catch(() => {});
     });
 }
