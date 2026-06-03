@@ -38,7 +38,7 @@ export const CryptoEngine = {
                 name: this.algorithm, 
                 length: 256 
             },
-            false,
+            true, // <--- CAMBIADO DE false A true (Permite que auth.js guarde la sesión)
             ['encrypt', 'decrypt']
         );
     },

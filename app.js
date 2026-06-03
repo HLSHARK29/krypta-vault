@@ -12,8 +12,8 @@ import {
 let activeKey = null;
 let currentUser = null;
 let editingId = null; 
-let cachedVault = []; // Para búsqueda y ordenamiento rápido sin volver a la nube
-let inactivityTimeout; // Control de sesión por inactividad
+let cachedVault = []; 
+let inactivityTimeout; 
 
 // Selectores del DOM
 const ui = {
@@ -53,19 +53,18 @@ const ui = {
     goToRegister: document.getElementById('go-to-register'),
     goToLogin: document.getElementById('go-to-login'),
 
-    // Nuevos Selectores
     vaultSearch: document.getElementById('vault-search'),
     sortSelect: document.getElementById('sort-select'),
     azSidebar: document.getElementById('az-sidebar')
 };
 
-// --- NUEVA LÓGICA DE SEGURIDAD: INACTIVIDAD ---
+// --- SEGURIDAD: INACTIVIDAD ---
 function resetInactivityTimer() {
     clearTimeout(inactivityTimeout);
-    if (activeKey) { // Solo si la bóveda está abierta
+    if (activeKey) { 
         inactivityTimeout = setTimeout(() => {
             handleAutoLock();
-        }, 60000); // 1 minuto
+        }, 60000); 
     }
 }
 
@@ -77,12 +76,10 @@ async function handleAutoLock() {
     location.reload();
 }
 
-// Detectar actividad en el dispositivo
 ['mousedown', 'touchstart', 'scroll', 'keypress', 'click'].forEach(event => {
     window.addEventListener(event, resetInactivityTimer, true);
 });
 
-// Bloqueo inmediato al salir de la app o cambiar pestaña
 document.addEventListener('visibilitychange', () => {
     if (document.hidden && activeKey) {
         handleAutoLock();
@@ -91,14 +88,12 @@ document.addEventListener('visibilitychange', () => {
 
 document.addEventListener('DOMContentLoaded', async () => {
     
-    // --- 1. Lógica de Desbloqueo con Teclado (Enter) ---
     const handleLoginEnter = (e) => {
         if (e.key === 'Enter') ui.btnUnlock.click();
     };
     ui.masterKeyInput.addEventListener('keypress', handleLoginEnter);
     ui.loginUser.addEventListener('keypress', handleLoginEnter);
 
-    // --- 2. Lógica de Búsqueda y Ordenamiento ---
     ui.vaultSearch.addEventListener('input', () => {
         const query = ui.vaultSearch.value.toLowerCase();
         const filtered = cachedVault.filter(item => 
@@ -108,11 +103,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderFilteredVault(filtered);
     });
 
-    ui.sortSelect.addEventListener('change', () => {
+    // AJUSTE: Guardar preferencia al cambiar el select
+    ui.sortSelect.addEventListener('change', async () => {
         applySortAndRender();
+        if (currentUser) {
+            await CloudStorage.saveSetting(currentUser.id, 'preferredOrder', ui.sortSelect.value);
+        }
     });
 
-    // --- 3. Lógica de Visibilidad ---
     document.body.addEventListener('change', (e) => {
         if (e.target.classList.contains('check-show-pass')) {
             const targetId = e.target.getAttribute('data-target');
@@ -127,7 +125,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         evaluateStrength(ui.newPass.value);
     });
 
-    // --- 4. Generador de Contraseñas ---
     ui.btnGenerate.addEventListener('click', () => {
         const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=";
         let retVal = "";
@@ -140,11 +137,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         evaluateStrength(retVal);
     });
 
-    // --- 5. Navegación ---
     ui.goToRegister.addEventListener('click', (e) => { e.preventDefault(); showScreen('register'); });
     ui.goToLogin.addEventListener('click', (e) => { e.preventDefault(); showScreen('auth'); });
 
-    // --- 6. Persistencia de Sesión Firebase ---
     onAuthStateChanged(auth, (user) => {
         if (user) {
             currentUser = { id: user.uid, email: user.email };
@@ -154,7 +149,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // --- 7. Soporte Biométrico ---
     const hasBiometrics = await Auth.checkSupport();
     if (!hasBiometrics) {
         ui.btnBiometric.style.display = 'none';
@@ -174,7 +168,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // --- 8. Registro y Login ---
     ui.btnCreate.addEventListener('click', async () => {
         const email = ui.regEmail.value.trim();
         const pass = ui.regMasterKey.value;
@@ -201,7 +194,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch (e) { alert("Clave o correo incorrectos."); }
     });
 
-    // --- 9. Gestión del Modal ---
     ui.btnSaveNew.addEventListener('click', () => {
         editingId = null;
         ui.modalTitle.innerText = "Nueva Credencial";
@@ -224,7 +216,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
 
         if (!data.pass) return alert("La contraseña es obligatoria.");
-
         ui.btnConfirmSave.disabled = true;
         ui.btnConfirmSave.innerText = "Sincronizando...";
         
@@ -237,7 +228,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         await renderVault();
     });
 
-    // --- 10. Cierre de Bóveda ---
     ui.btnLock.addEventListener('click', async () => {
         if(confirm("¿Cerrar sesión de la bóveda?")) {
             activeKey = null;
@@ -249,7 +239,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /**
- * Funciones de Búsqueda y Ordenamiento
+ * LÓGICA DE ORDENAMIENTO Y PERSISTENCIA
  */
 function applySortAndRender() {
     const criteria = ui.sortSelect.value;
@@ -258,9 +248,9 @@ function applySortAndRender() {
     if (criteria === 'alpha') {
         sortedData.sort((a, b) => a.site.localeCompare(b.site, undefined, { numeric: true, sensitivity: 'base' }));
     } else if (criteria === 'oldest') {
-        // Orden natural
+        // Orden por defecto de creación
     } else {
-        sortedData.reverse(); // Newest first
+        sortedData.reverse(); 
     }
 
     renderFilteredVault(sortedData);
@@ -268,6 +258,7 @@ function applySortAndRender() {
 
 function renderAZSidebar(data) {
     ui.azSidebar.innerHTML = '';
+    // Obtener letras únicas presentes en los datos
     const letters = [...new Set(data.map(item => item.site[0].toUpperCase()))].sort();
     
     letters.forEach(letter => {
@@ -275,8 +266,16 @@ function renderAZSidebar(data) {
         link.href = '#';
         link.className = 'az-letter';
         link.innerText = letter;
-        link.onclick = (e) => {
+        link.onclick = async (e) => {
             e.preventDefault();
+            
+            // AJUSTE: Si no está en orden alfabético, forzarlo para que el scroll sea preciso
+            if (ui.sortSelect.value !== 'alpha') {
+                ui.sortSelect.value = 'alpha';
+                applySortAndRender();
+                await CloudStorage.saveSetting(currentUser.id, 'preferredOrder', 'alpha');
+            }
+
             const target = Array.from(ui.passwordList.children).find(card => 
                 card.querySelector('.site-name')?.innerText[0].toUpperCase() === letter
             );
@@ -287,7 +286,7 @@ function renderAZSidebar(data) {
 }
 
 /**
- * Evalúa la seguridad e inyecta la barra visual definida en CSS
+ * UI & RENDERING
  */
 function evaluateStrength(pass) {
     let score = 0;
@@ -358,8 +357,12 @@ async function renderFilteredVault(data) {
         card.className = 'password-card';
         try {
             const decrypted = await CryptoEngine.decrypt(item.cipher, item.iv, activeKey);
+            const domain = item.site.includes('.') ? item.site : `${item.site}.com`;
+            const iconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+
             card.innerHTML = `
                 <div class="card-header">
+                    <img src="${iconUrl}" class="site-icon" onerror="this.style.display='none'" style="width:24px;height:24px;margin-right:10px;border-radius:4px;">
                     <div class="site-info">
                         <div class="site-name">${item.site}</div>
                         ${item.username ? `<div class="detail-row"><b>Usuario:</b> ${item.username}</div>` : ''}
@@ -404,14 +407,12 @@ function prepareEdit(item, rawPass) {
     evaluateStrength(rawPass);
 }
 
-// CORRECCIÓN: Función de borrado con actualización inmediata de caché local
 async function deleteEntry(id, site) {
     if (confirm(`¿Eliminar permanentemente "${site}"?`)) {
         try {
             await CloudStorage.delete(id);
-            // Actualizamos la caché en memoria para que desaparezca visualmente de inmediato
             cachedVault = cachedVault.filter(item => item.id !== id);
-            applySortAndRender(); // Re-renderiza la lista filtrada
+            applySortAndRender();
         } catch (e) {
             alert("Error al intentar eliminar el registro.");
         }
@@ -445,16 +446,29 @@ function clearModalFields() {
     ui.strengthText.innerText = "Nivel de seguridad";
 }
 
-function showVault() {
+async function showVault() {
     showScreen('vault');
     ui.btnLock.innerHTML = '<span class="material-icons-round">lock_open</span>';
-    renderVault();
-    resetInactivityTimer(); // Iniciamos el conteo al entrar a la bóveda
+    
+    // AJUSTE: Cargar preferencia de orden al iniciar
+    const savedOrder = await CloudStorage.getSetting(currentUser.id, 'preferredOrder');
+    if (savedOrder) {
+        ui.sortSelect.value = savedOrder;
+    }
+
+    if (CloudStorage.listen) {
+        CloudStorage.listen(currentUser.id, (newData) => {
+            cachedVault = newData;
+            applySortAndRender();
+        });
+    } else {
+        renderVault();
+    }
+    resetInactivityTimer();
 }
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        // Nota: El manejo de actualización automática se moverá aquí tras configurar sw.js
         navigator.serviceWorker.register('./sw.js').catch(() => {});
     });
 }
